@@ -1,10 +1,10 @@
-# crosswalk/budget_authority.yaml
+# crosswalk/budget_reservation.yaml
 #
-# Budget Authority — canonical verb set for the cumulative-spend
+# Budget Reservation — canonical verb set for the cumulative-spend
 # enforcement layer between agent identity/delegation (APS) and
 # payment-rail settlement (x402, Stripe, ACP, MPP, AP2).
 #
-# Composition: passport (identity + delegation) → budget authority
+# Composition: passport (identity + delegation) → budget reservation
 # (cumulative enforcement) → rail (settlement).
 #
 # Structurally different from the per-system forward crosswalks
@@ -152,7 +152,7 @@ stewardship:
 
 # Promotion path. File promotes from `domain_incubation` to canonical
 # when:
-#   1. A third production implementation of the budget-authority domain
+#   1. A third production implementation of the budget-reservation domain
 #      surfaces (x402-foundation/x402#2176, OpenClaw SpendEnvelope at
 #      second-state/payment-skill#31, or a new entrant).
 #   2. Each `proposed` verb gains a second implementer.
