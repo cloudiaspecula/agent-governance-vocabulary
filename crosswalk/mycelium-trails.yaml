@@ -9,8 +9,7 @@
 # record is a content-addressed, audit-replayable artifact of who acted
 # under whose authority.
 #
-# Four adoption points captured in this draft (verbatim from giskard09's
-# comment thread):
+# Four adoption points captured from giskard09's comment thread:
 #
 #   1. `action_ref` is SHA-256(agent_id UTF-8 || action_type UTF-8 ||
 #      scope UTF-8 || timestamp_ms int64 big-endian).
@@ -58,7 +57,7 @@ maintainer:
 #   - APS adoption thread (4 adoption points captured here):
 #     aeoess/agent-passport-system#1, giskard09 2026-05-13 20:41Z.
 #   - APS-side action_ref reference: agent-passport-system V2 receipt
-#     surface (~/agent-passport-system/src/v2/types.ts → action_ref).
+#     surface in src/v2/types.ts on aeoess/agent-passport-system.
 #   - APS-side delegation_ref content-addressed form: APS V2 delegation
 #     surface; Mycelium adopts the byte contract
 #     `sha256(passport_uri || DelegationGrant.signature)` verbatim.
@@ -237,4 +236,12 @@ descriptor_dimensions:
 #   6. ISSUERS_IN_PRODUCTION. Confirm whether argentum.rgiskard.xyz is the
 #      production reference implementation issuing under the adopted byte
 #      contract, and list any additional implementations.
+#
+#   7. REFUSAL_AUTHORITY. Not declared in v0.1. The current vocabulary
+#      enum (issuer / verifier / consumer_policy / shared) does not
+#      include a value for "refusal happens upstream, before the
+#      attestation exists", which is Mycelium's case (refusal sits in
+#      APS DelegationGrant validation / gateway preflight before any
+#      trail is recorded). Leaving the descriptor unset until either
+#      the enum is extended or a closer-fit value is identified.
 # ─────────────────────────────────────────────────
