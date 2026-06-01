@@ -22,10 +22,10 @@
 # strategic_posture below.
 #
 # This crosswalk is calibrated against:
-#   - APS:  agent-passport-system @ 2.3.0-alpha (npm), src/index.ts
+#   - APS:  agent-passport-system @ 2.6.0-alpha.9 (npm), src/index.ts
 #   - ACTA: @veritasacta/artifacts @ 0.2.2 (SPEC.md, 349 lines)
 #           @veritasacta/protocol @ 0.1.1
-#           @veritasacta/verify @ 0.6.0 (engines/{ed25519-receipt,
+#           @veritasacta/verify @ 0.6.1 (engines/{ed25519-receipt,
 #             delegation, selective-disclosure}.js)
 #           protect-mcp @ 0.6.0
 #           draft-farley-acta-signed-receipts (rev -01, 2026-04-25,
@@ -134,7 +134,11 @@ mappings:
       Values Floor attestation references; ACTA adds the JWK-thumbprint
       kid and the structured v2 envelope split. APS receipts always
       carry delegation context; ACTA receipts may or may not (per
-      payload.authorization.delegation_chain optional field).
+      payload.authorization.delegation_chain optional field). An APS
+      layer that wraps or references an ACTA receipt does not alter
+      its validity: ACTA validity stays native ACTA validity, and APS
+      cascade revocation does not propagate into the inner ACTA
+      receipt.
     migration_paths:
       aps_to_acta: |
         Emit an ACTA v2 envelope: type='decision_receipt',
@@ -321,8 +325,12 @@ mappings:
       12 hook). The IETF draft also specifies a Merkle-tree multi-
       field disclosure variant (leaves = SHA-256(0x00 || canonical),
       internal nodes = SHA-256(0x01 || left || right)); this variant
-      is spec-only at draft rev -01 and not yet in the v0.6.0
-      verifier.
+      is spec-only at draft rev -01. As of @veritasacta/verify 0.6.1,
+      ACTA supports both the legacy per-field _commitments map and a
+      committed_fields_root Merkle commitment mode; APS and ACTA
+      compose here, but the primitives stay divergent (whole-receipt
+      audit Merkle vs per-field disclosure commitments), not
+      equivalent.
     migration_paths:
       aps_to_acta: |
         Not yet supported. APS does not produce per-field commitments.
@@ -382,7 +390,11 @@ mappings:
       hop's signature/expiry/scope-subset/max_depth), selective
       disclosure (commitment reconstruction), VOPRF (rate-limit token).
       ACTA verification surface is broader (multiple receipt types)
-      but does not include revocation.
+      but does not include revocation. Key resolution differs: the
+      current ACTA verifier rejects embedded keys by default, so
+      verification requires explicit key, JWKS, signing_keys, or
+      agent_manifest resolution rather than a key carried on the
+      receipt.
     migration_paths:
       aps_to_acta: |
         APS-issued receipts can be verified by ACTA CLI IF the
