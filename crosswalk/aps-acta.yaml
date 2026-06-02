@@ -201,8 +201,11 @@ mappings:
     notes: |
       Both identify the signing key. Different identifier shapes:
       raw pubkey hex vs JWK thumbprint. The thumbprint is a
-      collision-resistant derivation from the same Ed25519 public key,
-      so a 1:1 mapping is computable in either direction.
+      collision-resistant derivation from the same Ed25519 public key.
+      APS raw public key -> ACTA kid is deterministic via the JWK
+      thumbprint; the reverse is not reversible from the thumbprint
+      alone and requires explicit key, JWKS, signing_keys, or
+      agent_manifest resolution.
     migration_paths:
       aps_to_acta: |
         kid = base64url(SHA-256(canonical_jwk(apsPublicKey)))
