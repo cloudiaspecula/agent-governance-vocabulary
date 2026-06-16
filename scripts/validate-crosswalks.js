@@ -52,7 +52,11 @@ function walkYaml(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) out.push(...walkYaml(full))
-    else if (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml')) out.push(full)
+    // `_`-prefixed files are non-production fixtures (for example the
+    // _test-invalid.yaml negative fixture). They are excluded from the main
+    // validation pass and handled separately by checkNegativeFixtures so that
+    // `npm run validate` exits 0 on production crosswalks. (Issue #111.)
+    else if ((entry.name.endsWith('.yaml') || entry.name.endsWith('.yml')) && !entry.name.startsWith('_')) out.push(full)
   }
   return out.sort()
 }
@@ -204,6 +208,70 @@ function validateDescriptors(doc, file) {
   }
 }
 
+// Fail-closed reverify enforcement.
+//
+// Field contract (cell-level, applies to any crosswalk shape):
+//   reverify_by: <ISO 8601 date>     the cell MUST be re-verified by this date.
+//   reverify_after: <ISO 8601 date>  the claim holds until this date; the cell
+//                                    MUST be re-verified after it.
+// Both are deadlines. A cell is FRESH only if it carries a sibling evidence
+// marker on the same cell:
+//   reverified_at: <ISO 8601 date>  (preferred) or verified_at: <ISO 8601 date>
+// whose date is at or after the governing deadline. If the deadline is in the
+// past and no such fresher marker is present, the cell validates to a `stale`
+// state and the run FAILS (non-zero) rather than passing silently. If both
+// reverify_by and reverify_after are present the EARLIER deadline governs (most
+// conservative). An unparseable or non-string reverify date is a hard error.
+// Note: only structured keys are enforced. A reverify date mentioned in free
+// text (for example inside a status_note string) is documentation, not a field.
+const REVERIFY_MARKERS = ['reverified_at', 'verified_at']
+
+function validateReverify(node, file, dotPath) {
+  if (!node || typeof node !== 'object') return
+  if (Array.isArray(node)) {
+    node.forEach((item, i) => validateReverify(item, file, `${dotPath}[${i}]`))
+    return
+  }
+  const dp = dotPath || '(root)'
+  const deadlines = []
+  for (const key of ['reverify_by', 'reverify_after']) {
+    if (node[key] === undefined || node[key] === null) continue
+    const raw = node[key]
+    const str = raw instanceof Date ? raw.toISOString().slice(0, 10) : raw
+    if (typeof str !== 'string') {
+      err(file, `${dp}.${key}: must be an ISO 8601 date string, got ${typeof raw}`)
+      continue
+    }
+    const ms = Date.parse(str)
+    if (Number.isNaN(ms)) {
+      err(file, `${dp}.${key}: "${str}" is not a parseable ISO 8601 date`)
+      continue
+    }
+    deadlines.push({ key, str, ms })
+  }
+  if (deadlines.length > 0) {
+    const gov = deadlines.reduce((a, b) => (b.ms < a.ms ? b : a))
+    if (gov.ms < Date.now()) {
+      let fresh = false
+      for (const m of REVERIFY_MARKERS) {
+        const mv = node[m]
+        if (mv === undefined || mv === null) continue
+        // js-yaml parses bare ISO dates into Date objects; accept both Date and string.
+        const mstr = mv instanceof Date ? mv.toISOString() : (typeof mv === 'string' ? mv : null)
+        if (mstr === null) continue
+        const mm = Date.parse(mstr)
+        if (!Number.isNaN(mm) && mm >= gov.ms) { fresh = true; break }
+      }
+      if (!fresh) {
+        err(file, `${dp}: cell is stale: ${gov.key} ${gov.str} is in the past with no fresher reverified_at/verified_at marker; re-verify and update the marker (fail-closed reverify rule)`)
+      }
+    }
+  }
+  for (const [k, v] of Object.entries(node)) {
+    if (v && typeof v === 'object') validateReverify(v, file, dotPath ? `${dotPath}.${k}` : k)
+  }
+}
+
 function validateFile(file) {
   let doc
   try {
@@ -216,6 +284,10 @@ function validateFile(file) {
     err(file, 'file is empty or not an object')
     return
   }
+
+  // Fail-closed reverify enforcement runs on every crosswalk shape, before the
+  // type-specific early returns, so a stale cell fails regardless of format.
+  validateReverify(doc, file, '')
 
   if (doc.crosswalk_type === 'rfc_category_reverse') {
     if (verbose) console.log(`  skip  ${path.relative(ROOT, file)} (reverse crosswalk)`)
@@ -276,11 +348,42 @@ console.log(`  dimensions:   ${Object.keys(descriptorEnums).join(', ')}`)
 console.log(`  system attrs: ${Object.keys(systemAttributeEnums).join(', ')}`)
 console.log('')
 
+// Negative fixtures (crosswalk/_*.yaml) must FAIL validation. Each is run
+// through the validator in isolation, asserted to produce at least one error,
+// and its expected diagnostics are then discarded from the production tally.
+// If a fixture stops failing, that is itself a hard error: either the validator
+// or the fixture has drifted. (Issue #111: the fixture used to run in the main
+// pass, which made `npm run validate` exit non-zero on production crosswalks.)
+function checkNegativeFixtures() {
+  let names = []
+  try {
+    names = fs.readdirSync(CROSSWALK_DIR)
+      .filter(n => n.startsWith('_') && (n.endsWith('.yaml') || n.endsWith('.yml')))
+      .sort()
+  } catch { return }
+  for (const name of names) {
+    const file = path.join(CROSSWALK_DIR, name)
+    const eBefore = errors.length
+    const wBefore = warnings.length
+    validateFile(file)
+    const added = errors.length - eBefore
+    errors.length = eBefore
+    warnings.length = wBefore
+    if (added === 0) {
+      err(file, 'negative fixture is expected to FAIL validation but produced 0 errors; the validator or the fixture has drifted')
+    } else if (verbose) {
+      console.log(`  ok    ${path.relative(ROOT, file)} (negative fixture correctly rejected: ${added} expected error(s))`)
+    }
+  }
+}
+
 for (const file of files) {
   const rel = path.relative(ROOT, file)
   if (verbose) console.log(`  check ${rel}`)
   validateFile(file)
 }
+
+checkNegativeFixtures()
 
 if (warnings.length > 0) {
   console.log('')

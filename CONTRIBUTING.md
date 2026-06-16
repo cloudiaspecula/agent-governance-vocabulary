@@ -145,6 +145,20 @@ they integrated against the claimed behavior and observed it. Principal-only
 attestations are visible but weightless for promotion. There are no
 time-based unlocks; elapsed time is not evidence.
 
+A claim and its qualifiers travel together. Every qualifier on a cell (its evidence basis, its staleness, the scope of a search, a dispute) must be inseparable from the claim as it is quoted or rendered. A qualifier that lives only in a field beside the value is not real, because cells are extracted and shared apart from their surrounding YAML. The rules below are applications of this test.
+
+Attribution: a cell that makes a factual claim about a third party (a capability, a gap, a structural read of another system's protocol) carries the attestation of the party that verified it, recorded in the PR under that party's name. When an outside contributor supplies the claim, the contributor is recorded as the verifier. A maintainer may verify a contributor's evidence and apply governance or formatting edits, but does not convert a contributor's claim into the maintainer voice unless the maintainer independently re-derives it and records themselves as the verifier.
+
+Basis renders in the cell, asymmetrically: publicly verifiable is the unmarked default, and a clean cell renders clean because the absence of a marker means verified. Any basis weaker than publicly verifiable is carried in the cell's displayed value, not only in a sibling field, so it cannot be quoted without its basis (for example, release (self-attested)).
+
+Reverify is enforced, not promised: a reverify_after or reverify_by date is a control only if expiry changes validation state. Once the date passes with no newer evidence, the validator moves the cell to a stale state; a stale cell renders its staleness in its displayed value and is weightless for promotion. Elapsed time never upgrades a cell, and an expired reverify date can only weaken one. This clause is normative only alongside the validator support that enforces it.
+
+Right of reply: a cell that describes a third-party system is contestable by that system's maintainer or their designated representative, through a public issue or PR, with a disputed field linking to it that surfaces wherever the cell renders. Hosting a claim about a system whose maintainer is not in the room is acceptable only when that maintainer has a standing, low-friction way to correct it.
+
+Negative claims are bounded: a cell never states that a system lacks a capability as a fact about the system. It states what was searched and not found, listing the repos, documents, versions, and refs examined, so the claim is a true and durable search result rather than a capability judgment.
+
+Judgment-laden markers cite the source's own words: a status marker that reads as an evaluation of another system (a verb recorded as folded into another, a capability recorded as delegated elsewhere) cites that system's own documentation in its own terms, or it is downgraded to a bounded not-found. The marker describes the system's design as the system states it, not as the registry reads it.
+
 ---
 
 ## Licensing
