@@ -19,9 +19,10 @@
 #   4. Multi-agent compositions land as N separate TrailRecords with
 #      independent delegation_ref values, not one-to-many inside one record.
 #
-# Adoption is byte-contract only (action_ref and delegation_ref
-# computation rules plus the null-root and composition conventions).
-# The TrailRecord envelope is Mycelium-specific.
+# Adoption captures Mycelium's own action_ref and delegation_ref
+# computation rules plus the null-root and composition conventions.
+# The recipes are Mycelium's own; the TrailRecord envelope is
+# Mycelium-specific.
 #
 # Home:        https://argentum.rgiskard.xyz
 # Contributor: @giskard09
@@ -100,20 +101,22 @@ signal_types:
     mycelium_definition: >
       A TrailRecord is a signed governance attestation that records an
       AI-agent action and its authority chain. The four adoption points
-      above pin the bilateral byte contract with APS: every Mycelium
-      TrailRecord uses the same action_ref and delegation_ref byte
-      computation as APS, so a consumer can content-address-match
-      Mycelium records against APS-produced authority records (and vice
-      versa) without re-deriving identifiers.
+      above record Mycelium's own action_ref and delegation_ref
+      computation rules, as confirmed by giskard09, with the null-root
+      and per-agent composition conventions. The crosswalk maps the
+      field names (snake_case action_ref and delegation_ref) and the
+      content-addressing role onto the APS governance-attestation signal
+      type; each system's byte recipe is its own.
     match: partial
     divergence: >
-      The action_ref and delegation_ref byte forms are structurally
-      identical to APS by adoption (identifier-level structural match);
-      the surrounding TrailRecord envelope is Mycelium-specific while
-      APS-side envelopes are DelegationGrant and PaymentReceipt
-      (envelope-level partial match). Two systems sharing the same
-      content-addressing primitives can cross-join records without
-      coordinating identifier schemes.
+      Mycelium derives action_ref by raw byte concatenation with an
+      int64 big-endian timestamp, a different preimage from the APS
+      action_ref (RFC 8785 JCS over a JSON object with a string
+      timestamp), so the identifiers are not byte-joinable across the
+      two systems. The correspondence is at the field-name and
+      content-addressing-role level; the TrailRecord envelope is
+      Mycelium-specific while APS-side envelopes are DelegationGrant and
+      PaymentReceipt.
     notes: >
       v0.1 captures the four adoption points only. Per-envelope wire
       fields, signature semantics, and descriptor enforcement_class
