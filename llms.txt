@@ -6,9 +6,9 @@ This is a neutral-ground repo. Multiple vendors contribute. The neutrality is th
 
 ## Structure
 
-- `vocab.yaml`: the single canonical term file
+- `vocabulary.yaml`: the single canonical term file
 - `crosswalk/<project>.yaml`: per-project mappings into the vocabulary
-- `fixtures/`: test vectors referencing term ids from `vocab.yaml`
+- `fixtures/`: test vectors referencing term ids from `vocabulary.yaml`
 - `docs/`: crosswalk format, rationale notes, contribution guides
 
 ## Canonical references
