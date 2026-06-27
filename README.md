@@ -1,24 +1,30 @@
 # Agent Governance Vocabulary
 
-Every agent-governance system names its own primitives. MolTrust issues a "Swarm Intelligence Trust Score." Other systems publish "trust attestations," "scope profiles," "reputation grades." A verifier consuming signals from three systems has to learn three vocabularies just to discover that two of them mean the same thing, or worse, that two identical labels mean different things.
+Agent Governance Vocabulary is a common reference for agent-governance systems. It maps how different systems name identity, authority, trust, receipts, replay, and other governance signals onto one canonical set of terms, without asking anyone to rename their own system.
 
-This repo is the shared reference that fixes the naming problem without asking anyone to rename anything. One canonical vocabulary, one crosswalk file per system, and a match type on every row that says exactly how close the mapping is.
+Every system names its own primitives, so the same signal travels under many labels. Here are five systems in this registry that issue what is canonically `behavioral_trust`, each under a different name:
+
+| System | Its own name for the signal | Match |
+| --- | --- | --- |
+| MolTrust | Swarm Intelligence Trust Score (Phase 2) | exact |
+| AgentLair | Three-Dimensional Trust Score (RFC-003 Phase 2b) | exact |
+| PathCourse | Path Score (0-850) | exact |
+| Sovereign Atom | relationship.trust_score | exact |
+| APS | ScopedReputation | partial |
+
+The verifier reads all five and learns a single canonical name, `behavioral_trust`, in place of five. Each mapping is one row in that system's crosswalk file, and where the fit is not exact the row says so. APS exposes scoped-reputation primitives rather than one scored assessment, which is why its row is `partial` while the other four are `exact`.
 
 ## What a row looks like
 
-From `crosswalk/moltrust.yaml`:
-
 ```yaml
-behavioral_trust:
-  canonical: behavioral_trust
-  internal: "Swarm Intelligence Trust Score (Phase 2)"
-  match: exact
-  signed_payload_fields: [did, trust_score, grade, endorser_count, flags, flag_count, breakdown]
+<signal>:
+  canonical: <canonical name>
+  internal: "<the system's own name for it>"
+  match: exact | structural | partial | non_equivalent_similar_label | no_mapping
+  signed_payload_fields: [ ... ]   # the fields the signature covers
 ```
 
-One line of meaning: when MolTrust signs a Swarm Intelligence Trust Score, a verifier can treat it as the canonical `behavioral_trust` signal, and these are the fields the signature covers.
-
-The registry documents differences as carefully as matches. InsumerAPI's crosswalk maps `behavioral_trust` as `no_mapping`: InsumerAPI does not issue that signal, and the row says so instead of stretching a similar label to fit. Five match types carry this honesty: `exact`, `structural`, `partial`, `non_equivalent_similar_label`, `no_mapping`. The last two exist because false equivalence is the failure mode this layer prevents.
+The registry documents differences as carefully as matches. InsumerAPI's crosswalk maps `behavioral_trust` as `no_mapping`: it does not issue that signal, and the row says so instead of stretching a similar label to fit. Five match types carry this honesty: `exact`, `structural`, `partial`, `non_equivalent_similar_label`, `no_mapping`. The last two exist because false equivalence is the failure mode this layer prevents.
 
 ## How the pieces fit
 
