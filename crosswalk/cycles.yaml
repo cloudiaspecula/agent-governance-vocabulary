@@ -48,6 +48,15 @@ maintainer:
   github: amavashev
   confirmed_at: "2026-05-12"
 
+# On-wire signed-artifact profile for the CyclesEvidence envelope, now the
+# normative spec runcycles/cycles-protocol cycles-evidence-v0.2.yaml. Populated
+# per the v0.2 follow-up tracked at runcycles/cycles-protocol#94 (the envelope
+# ships in production, so these three fields are now byte-for-byte describable).
+system_attributes:
+  signature_capability: classical          # Ed25519 — classical, not post-quantum
+  canonicalization_profile: jcs-rfc-8785    # RFC 8785 JSON Canonicalization Scheme
+  hash_family: sha-256                      # evidence_id = sha256(JCS canonical bytes)
+
 # Cross-references:
 #   - Budget-reservation verb layer (reserve / commit / release / refund /
 #     query_budget / query_reservation) lives in a separate file proposed
@@ -57,8 +66,9 @@ maintainer:
 #     aeoess/agent-passport-system#25 comment 4433715146). This file
 #     covers signal-type-level mappings only.
 #   - CyclesEvidence envelope (JCS-canonical signed evidence for the
-#     cross-system content-addressed join) is drafted at
-#     runcycles/cycles-protocol#90.
+#     cross-system content-addressed join): normative spec
+#     runcycles/cycles-protocol cycles-evidence-v0.2.yaml (originally drafted
+#     in runcycles/cycles-protocol#90, promoted in #118).
 #   - APS integration thread, including PaymentReceipt shape, two-receipt
 #     emission model, and CyclesEvidenceRef join interface:
 #     aeoess/agent-passport-system#25.
@@ -119,8 +129,8 @@ signal_types:
       on the
       commit/release path is via the URL: commit_reservation and
       release_reservation take reservation_id as a path argument, and the
-      response bodies do not echo it. The CyclesEvidence envelope draft
-      in `cycles-protocol/drafts/` (runcycles/cycles-protocol#90) hoists
+      response bodies do not echo it. The CyclesEvidence envelope
+      (runcycles/cycles-protocol cycles-evidence-v0.2.yaml) hoists
       reservation_id into the signed canonical bytes so audit consumers
       can recover the directional authorization → settlement chain from
       evidence alone.
@@ -146,16 +156,15 @@ signal_types:
          descriptor_dimensions.governance_attestation.enforcement_class
          below.
 
-      v0.1 scope note: this file does not enumerate per-shape signing
-      semantics because Cycles' on-wire artifacts today are server-issued
-      JSON over TLS with bearer-token authentication, not contributor-signed
-      envelopes. The CyclesEvidence draft at runcycles/cycles-protocol#90
-      defines a JCS-canonicalized signed envelope shape
-      (RFC 8785 + sha256 + Ed25519) for the cross-system content-addressed
-      join described in aeoess/agent-passport-system#25. A follow-up PR
-      will populate system_attributes (signature_capability,
-      canonicalization_profile, hash_family) once the CyclesEvidence
-      draft is normative.
+      Signing semantics: the CyclesEvidence envelope — JCS-canonicalized
+      (RFC 8785), sha256 content-addressed, Ed25519-signed — is normatively
+      specified at runcycles/cycles-protocol cycles-evidence-v0.2.yaml
+      (promoted out of `drafts/` in runcycles/cycles-protocol#118). The
+      top-level `system_attributes` block is populated from that normative
+      envelope format (signature_capability / canonicalization_profile /
+      hash_family), per the v0.2 follow-up at runcycles/cycles-protocol#94.
+      The envelope carries the cross-system content-addressed join described
+      in aeoess/agent-passport-system#25.
     issuers_in_production:
       - "runcycles (Cycles server v0, https://github.com/runcycles/cycles-protocol)"
       - "langchain-runcycles SDK (https://github.com/runcycles/langchain-runcycles)"
@@ -225,7 +234,7 @@ descriptor_dimensions:
       A Decision is valid at server issuance time. Cycles v0 responses do
       not themselves carry a timestamp field; the authoritative issuance
       time is captured in the CyclesEvidence envelope's `issued_at_ms`
-      (runcycles/cycles-protocol#90). A Reservation is valid for
+      (runcycles/cycles-protocol cycles-evidence-v0.2.yaml). A Reservation is valid for
       `ttl_ms` milliseconds after creation (typically seconds to
       minutes) and must be committed or released within that window or
       it expires automatically. A Commit is point-in-time at the moment
@@ -252,18 +261,29 @@ descriptor_dimensions:
       A Cycles decision can be replayed in the sense that, given the same
       subject, action, and idempotency key, the server returns an identical
       response. But replay from recorded evidence alone (the on-wire JSON)
-      requires the server's ledger state at decision time — the response
-      is not standalone-verifiable. Idempotency keys (per-call UUID with
-      optional namespace) protect replay-on-retry from double-debiting.
-      Promotable to full_replay once **all three** of the following
-      conditions hold: (1) the CyclesEvidence envelope draft at
-      runcycles/cycles-protocol#90 is promoted to a normative spec
-      (out of `drafts/`), (2) at least one Cycles server implementation
-      emits envelopes in production, and (3) at least one cross-system
-      consumer (most likely APS via `CyclesEvidenceRef`) has verified
-      the standalone replay path end-to-end. A draft alone is not
-      sufficient — verifiable standalone replay must be live before
-      this crosswalk's `replay_class` is bumped.
+      requires the server's ledger state at decision time — the response is
+      not standalone-verifiable. Idempotency keys (per-call UUID with optional
+      namespace) protect replay-on-retry from double-debiting.
+
+      Promotion to full_replay (tracked at runcycles/cycles-protocol#94):
+      condition 1 — the CyclesEvidence envelope is now a NORMATIVE spec
+      (runcycles/cycles-protocol cycles-evidence-v0.2.yaml, promoted out of
+      `drafts/` in runcycles/cycles-protocol#118) — is met, and the envelope
+      is content-addressed (sha256 over RFC 8785 JCS bytes) and Ed25519-signed,
+      i.e. designed to be standalone-verifiable without the server's live
+      ledger. Two conditions remain open per CONTRIBUTING.md's evidence bar
+      and gate the bump: (2) a PRODUCTION-emitted CyclesEvidence envelope
+      observable outside the project (fixtures/golden vectors + a live JWKS
+      establish the verification path and key infrastructure but do not
+      themselves count), and (3) a cross-system consumer with maintainership
+      INDEPENDENT of Cycles verifying the standalone envelope end to end (a
+      second codebase under the same maintainer does not clear it). BOTH (2)
+      and (3) must hold — together with the met condition 1 — before the bump;
+      they cover different risks (a production-emitted artifact vs independent
+      maintainership), and requiring both prevents a single trust domain from
+      promoting its own row off its own emission with no independent verifier
+      ever exercising the replay path. Until then decision_replay is the
+      accurate value.
 
     governed_action_class: ["read", "write", "transfer", "delegate", "publish", "compose"]
     note_governed: >
